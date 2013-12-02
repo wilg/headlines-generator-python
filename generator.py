@@ -9,7 +9,7 @@ from titlecase import titlecase
 from timeit import default_timer as timer
 
 # Settings
-max_corpus_size = 20000
+max_corpus_size = int(os.getenv('MAX_CORPUS_SIZE', 20000))
 
 class HeadlineGenerator:
 
