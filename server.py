@@ -12,10 +12,16 @@ gen = HeadlineGenerator()
 
 salt = os.getenv('HEADLINE_INJECTION_SALT', '')
 
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
 @app.route('/')
-def hello():
+def generate():
+
     sources = request.args.get('sources', '')
-# sha1
+
     results = []
     if sources:
       sources = sources.split(",")
