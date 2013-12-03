@@ -11,6 +11,60 @@ from timeit import default_timer as timer
 # Settings
 max_corpus_size = int(os.getenv('MAX_CORPUS_SIZE', 20000))
 
+def frag_or_none(fragment):
+    if fragment:
+        return fragment.fragment
+    return ''
+
+class HeadlineSourcePhrase:
+    def __init__(self, phrase, source_id):
+        self.phrase = phrase.strip()
+        self.source_id = source_id
+    def comparison_string(self):
+        return title.lower().replace("\"", "")
+    def __eq__(self, other):
+        return self.comparison_string == other.comparison_string
+    def __hash__(self):
+        return self.comparison_string().__hash__()
+
+class HeadlineFragment:
+    def __init__(self, source_phrase, fragment):
+        self.source_phrase = source_phrase
+        self.fragment = fragment
+    def __eq__(self, other):
+        return self.fragment == other.fragment
+    def __hash__(self):
+        return self.fragment.__hash__()
+
+class HeadlineResultPhrase:
+    def __init__(self):
+        self.fragments = []
+    def append(self, frag):
+        self.fragments.append(frag)
+    def sources(self):
+        sources = []
+        ranges = []
+
+        word_index = 0
+        last_source_phrase = None
+        source_index = 0
+        for frag in self.fragments:
+            if frag.source_phrase != last_source_phrase:
+                if word_index > 0:
+                    ranges.append({'start' : word_index, 'src': source_index})
+
+                # Source phrase changed
+                sources.append({'id':frag.source_phrase.source_id, 'h':frag.source_phrase.phrase})
+                source_index = len(sources) - 1
+
+                last_source_phrase = frag.source_phrase
+            word_index += 1
+        ranges.append({'start' : word_index, 'src': source_index})
+
+        return {'sources' : sources, 'ranges': ranges}
+    def __str__(self):
+        return ' '.join([fragment.fragment for fragment in self.fragments]).strip()
+
 class HeadlineGenerator:
 
     def generate(self, sources, depth):
@@ -19,12 +73,12 @@ class HeadlineGenerator:
 
         start = timer()
 
-        # import multiple dictionaries
+        # Import multiple dictionaries
         dir = os.path.dirname(__file__)
         imported_titles = []
         per_dictionary_limit = max_corpus_size / len(sources)
-        for source_name in sources:
-            filename = os.path.join(dir, "vendor/headline-sources/db/" + source_name + ".txt")
+        for source_id in sources:
+            filename = os.path.join(dir, "vendor/headline-sources/db/" + source_id + ".txt")
 
             archive = open(filename)
             dict_titles = archive.read().split("\n")
@@ -34,32 +88,27 @@ class HeadlineGenerator:
                 window_start = randint(0,len(dict_titles) - per_dictionary_limit)
                 dict_titles = dict_titles[window_start:window_start+per_dictionary_limit]
 
-            imported_titles = imported_titles + dict_titles
+            source_phrases = [HeadlineSourcePhrase(headline, source_id) for headline in dict_titles]
 
+            imported_titles = imported_titles + source_phrases
 
-        self.titles = []
+        self.source_phrases = imported_titles
 
         print "-> import time " + str(timer() - start)
         start = timer()
 
-        # lowercase everything, remove quotes (to prevent dangling quotes)
-        # we're also going to create a mapping back to the original case if it's a weird word (like iPad)
-        self.titlecase_mappings = {}
-        for title in imported_titles:
-            self.titles.append(title.lower().replace("\"", ""))
-            for original_word in title.replace("\"", "").split(" "):
-                self.titlecase_mappings[original_word.lower()] = original_word
-
         self.markov_map = defaultdict(lambda:defaultdict(int))
 
-        #Generate map in the form word1 -> word2 -> occurences of word2 after word1
-        for title in self.titles[:-1]:
-            title = title.split()
+        # Generate map in the form word1 -> word2 -> occurences of word2 after word1
+        for source_phrase in self.source_phrases[:-1]:
+            title = source_phrase.phrase.split()
             if len(title) > self.depth:
                 for i in xrange(len(title)+1):
-                    self.markov_map[' '.join(title[max(0,i-self.depth):i])][' '.join(title[i:i+1])] += 1
+                    a = HeadlineFragment(source_phrase, ' '.join(title[max(0,i-self.depth):i]))
+                    b = HeadlineFragment(source_phrase, ' '.join(title[i:i+1]))
+                    self.markov_map[a][b] += 1
 
-        #Convert map to the word1 -> word2 -> probability of word2 after word1
+        # Convert map to the word1 -> word2 -> probability of word2 after word1
         for word, following in self.markov_map.items():
             total = float(sum(following.values()))
             for key in following:
@@ -71,14 +120,14 @@ class HeadlineGenerator:
 
         results = []
         for _ in itertools.repeat(None, 10):
-            results.append(self.retitlize_sentence(self.get_sentence()))
+            results.append(self.get_sentence())
 
         print "-> sample time " + str(timer() - start)
         return results
 
-    #Typical sampling from a categorical distribution
+    # Typical sampling from a categorical distribution
     def sample(self, items):
-        next_word = None
+        next_word = ''
         t = 0.0
         for k, v in items:
             t += v
@@ -88,24 +137,16 @@ class HeadlineGenerator:
 
     def get_sentence(self, length_max=140):
         while True:
-            sentence = []
-            next_word = self.sample(self.markov_map[''].items())
+            sentence = HeadlineResultPhrase()
+            next_word = self.sample(self.markov_map[HeadlineFragment(None, '')].items())
             while next_word != '':
                 sentence.append(next_word)
-                next_word = self.sample(self.markov_map[' '.join(sentence[-self.depth:])].items())
-            sentence = ' '.join(sentence)
-            if any(sentence in title for title in self.titles):
-                continue #Prune titles that are substrings of actual titles
-            if len(sentence) > length_max:
+                tmp_frag_list = [frag_or_none(frag) for frag in sentence.fragments[-self.depth:]]
+                tmp_item = HeadlineFragment(None, ' '.join(tmp_frag_list))
+                next_word = self.sample(self.markov_map[tmp_item].items())
+            str_sentence = str(sentence)
+            if any(str_sentence in phrase.phrase for phrase in self.source_phrases):
+                continue # Prune titles that are substrings of actual titles
+            if len(str_sentence) > length_max:
                 continue
             return sentence
-
-    def retitlize_sentence(self, sentence):
-        lowercase_sentence = sentence.split(" ")
-        uppercase_sentence = []
-
-        for word in lowercase_sentence:
-            uppercase_sentence.append(self.titlecase_mappings.get(word, word))
-
-        return titlecase(" ".join(uppercase_sentence))
-
