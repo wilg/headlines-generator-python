@@ -41,27 +41,67 @@ class HeadlineResultPhrase:
         self.fragments = []
     def append(self, frag):
         self.fragments.append(frag)
-    def sources(self):
-        sources = []
-        ranges = []
 
-        word_index = 0
+    def merge_fragment_groups(self, fragment_groups):
+        fragments = []
+        for group in fragment_groups:
+            if len(group) > 1:
+                fragments.append(HeadlineFragment(group[-1].source_phrase, ' '.join([fragment.fragment for fragment in group])))
+            else:
+                fragments.append(group[0])
+        return fragments
+
+    def reduced_fragments(self):
+        fragments = self.fragments
+        this_str = str(self)
+
+        # Combine fragments from the same source
         last_source_phrase = None
-        source_index = 0
-        for frag in self.fragments:
-            if frag.source_phrase != last_source_phrase:
-                if word_index > 0:
-                    ranges.append({'start' : word_index, 'src': source_index})
+        current_group = []
+        groups = []
+        for fragment in fragments:
+            if fragment.fragment != '':
+                if last_source_phrase != None and last_source_phrase != fragment.source_phrase:
+                    groups.append(current_group)
+                    current_group = []
+                current_group.append(fragment)
+                last_source_phrase = fragment.source_phrase
+        groups.append(current_group)
+        fragments = self.merge_fragment_groups(groups)
 
-                # Source phrase changed
-                sources.append({'id':frag.source_phrase.source_id, 'h':frag.source_phrase.phrase})
-                source_index = len(sources) - 1
+        # Combine fragments that start the source phrase
+        groups = []
+        current_group = []
+        sentence = []
+        start = 0
+        i = 0
+        for fragment in fragments:
+            sentence.append(fragment.fragment)
+            phrase_so_far = ' '.join(sentence[start:])
+            if phrase_so_far in fragment.source_phrase.phrase:
+                current_group.append(fragment)
+            else:
+                start = i
+                if len(current_group) > 0:
+                    groups.append(current_group)
+                    current_group = []
+                    current_group.append(fragment)
+            i += 1
+        groups.append(current_group)
+        fragments = self.merge_fragment_groups(groups)
 
-                last_source_phrase = frag.source_phrase
-            word_index += 1
-        ranges.append({'start' : word_index, 'src': source_index})
+        return fragments
 
-        return {'sources' : sources, 'ranges': ranges}
+    def fragment_hashes(self):
+        fragments = []
+
+        char_index = 0
+        for frag in self.reduced_fragments():
+            hsh = {'index': char_index, 'fragment': frag.fragment, 'source_id':frag.source_phrase.source_id, 'source_phrase':frag.source_phrase.phrase}
+            fragments.append(hsh)
+            char_index += len(frag.fragment)
+
+        return fragments
     def __str__(self):
         return ' '.join([fragment.fragment for fragment in self.fragments]).strip()
 

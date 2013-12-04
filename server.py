@@ -27,6 +27,6 @@ def generate():
       sources = sources.split(",")
       headlines = gen.generate(sources, 2)
 
-      results = [{'headline':str(headline), 'sources': headline.sources(), 'hash': hashlib.sha1(str(headline) + "-" + salt).hexdigest()} for headline in headlines]
+      results = [{'headline':str(headline), 'sources': headline.fragment_hashes(), 'hash': hashlib.sha1(str(headline) + "-" + salt).hexdigest()} for headline in headlines]
 
     return jsonify(headlines=results)
