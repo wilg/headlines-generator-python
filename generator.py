@@ -4,6 +4,7 @@ from random import random
 import os
 import itertools
 import sys
+import re
 from titlecase import titlecase
 
 from timeit import default_timer as timer
@@ -16,25 +17,30 @@ def frag_or_none(fragment):
         return fragment.fragment
     return ''
 
+def comparison_string(s):
+    s = s.strip().lower().replace("\"", "")
+    re.sub('[^0-9a-zA-Z]+', '', s)
+    return s
+
 class HeadlineSourcePhrase:
     def __init__(self, phrase, source_id):
         self.phrase = phrase.strip()
         self.source_id = source_id
-    def comparison_string(self):
-        return title.lower().replace("\"", "")
+        self.comparison_string = comparison_string(self.phrase)
     def __eq__(self, other):
         return self.comparison_string == other.comparison_string
     def __hash__(self):
-        return self.comparison_string().__hash__()
+        return self.comparison_string.__hash__()
 
 class HeadlineFragment:
     def __init__(self, source_phrase, fragment):
         self.source_phrase = source_phrase
         self.fragment = fragment
+        self.comparison_string = comparison_string(self.fragment)
     def __eq__(self, other):
-        return self.fragment == other.fragment
+        return self.comparison_string == other.comparison_string
     def __hash__(self):
-        return self.fragment.__hash__()
+        return self.comparison_string.__hash__()
 
 class HeadlineResultPhrase:
     def __init__(self):
@@ -97,13 +103,13 @@ class HeadlineResultPhrase:
 
         char_index = 0
         for frag in self.reduced_fragments():
-            hsh = {'index': char_index, 'fragment': frag.fragment, 'source_id':frag.source_phrase.source_id, 'source_phrase':frag.source_phrase.phrase}
+            hsh = {'index': char_index, 'fragment': titlecase(frag.fragment), 'source_id':frag.source_phrase.source_id, 'source_phrase':frag.source_phrase.phrase}
             fragments.append(hsh)
             char_index += len(frag.fragment)
 
         return fragments
     def __str__(self):
-        return ' '.join([fragment.fragment for fragment in self.fragments]).strip()
+        return titlecase(' '.join([fragment.fragment for fragment in self.fragments]).strip())
 
 class HeadlineGenerator:
 
@@ -184,8 +190,8 @@ class HeadlineGenerator:
                 tmp_frag_list = [frag_or_none(frag) for frag in sentence.fragments[-self.depth:]]
                 tmp_item = HeadlineFragment(None, ' '.join(tmp_frag_list))
                 next_word = self.sample(self.markov_map[tmp_item].items())
-            str_sentence = str(sentence)
-            if any(str_sentence in phrase.phrase for phrase in self.source_phrases):
+            str_sentence = comparison_string(str(sentence))
+            if any(str_sentence in phrase.comparison_string for phrase in self.source_phrases):
                 continue # Prune titles that are substrings of actual titles
             if len(str_sentence) > length_max:
                 continue

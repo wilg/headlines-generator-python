@@ -21,11 +21,12 @@ def after_request(response):
 def generate():
 
     sources = request.args.get('sources', '')
+    depth = int(request.args.get('depth', 2))
 
     results = []
     if sources:
       sources = sources.split(",")
-      headlines = gen.generate(sources, 2)
+      headlines = gen.generate(sources, depth)
 
       results = [{'headline':str(headline), 'sources': headline.fragment_hashes(), 'hash': hashlib.sha1(str(headline) + "-" + salt).hexdigest()} for headline in headlines]
 
