@@ -66,12 +66,6 @@ def titlecase(text):
                 tc_line.append(word.lower())
                 continue
 
-            match = MAC_MC.match(word)
-            if match:
-                tc_line.append("%s%s" % (match.group(1).capitalize(),
-                                      match.group(2).capitalize()))
-                continue
-
             hyphenated = []
             for item in word.split('-'):
                 hyphenated.append(CAPFIRST.sub(lambda m: m.group(0).upper(), item))
