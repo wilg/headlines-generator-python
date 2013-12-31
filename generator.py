@@ -12,13 +12,18 @@ from timeit import default_timer as timer
 # Settings
 max_corpus_size = int(os.getenv('MAX_CORPUS_SIZE', 20000))
 
+def f7_uniq(seq):
+    seen = set()
+    seen_add = seen.add
+    return [ x for x in seq if x not in seen and not seen_add(x)]
+
 def frag_or_none(fragment):
     if fragment:
         return fragment.fragment
     return ''
 
 def comparison_string(s):
-    s = s.strip().lower().replace("\"", "")
+    s = str(s).strip().lower().replace("\"", "")
     re.sub('[^0-9a-zA-Z]+', '', s)
     return s
 
@@ -108,12 +113,18 @@ class HeadlineResultPhrase:
             char_index += len(frag.fragment)
 
         return fragments
+
+    def __eq__(self, other):
+        return comparison_string(self) == comparison_string(other)
+    def __hash__(self):
+        return comparison_string(self).__hash__()
+
     def __str__(self):
         return titlecase(' '.join([fragment.fragment for fragment in self.fragments]).strip())
 
 class HeadlineGenerator:
 
-    def generate(self, sources, depth):
+    def generate(self, sources, depth, seed_word):
 
         self.depth = depth
 
@@ -164,12 +175,16 @@ class HeadlineGenerator:
         print "-> map time " + str(timer() - start)
         start = timer()
 
+        if HeadlineFragment(None, seed_word) not in self.markov_map.keys():
+            print('Seed word ' + seed_word + " not in dictionaries")
+            return []
+
         results = []
         for _ in itertools.repeat(None, 10):
-            results.append(self.get_sentence())
+            results.append(self.get_sentence(seed_word))
 
         print "-> sample time " + str(timer() - start)
-        return results
+        return f7_uniq(results)
 
     # Typical sampling from a categorical distribution
     def sample(self, items):
@@ -181,10 +196,13 @@ class HeadlineGenerator:
                 next_word = k
         return next_word
 
-    def get_sentence(self, length_max=140):
+    def get_sentence(self, seed_word, length_max=140):
         while True:
             sentence = HeadlineResultPhrase()
-            next_word = self.sample(self.markov_map[HeadlineFragment(None, '')].items())
+            next_word = self.sample(self.markov_map[HeadlineFragment(None, seed_word)].items())
+            if seed_word:
+                keys = self.markov_map.keys()
+                sentence.append(keys[keys.index(HeadlineFragment(None, seed_word))])
             while next_word != '':
                 sentence.append(next_word)
                 tmp_frag_list = [frag_or_none(frag) for frag in sentence.fragments[-self.depth:]]

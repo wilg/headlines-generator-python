@@ -9,7 +9,7 @@ dicts.pop(0)
 depth = int(dicts.pop(0))
 
 gen = HeadlineGenerator()
-results = gen.generate(dicts, depth)
+results = gen.generate(dicts, depth, '')
 
 for result in results:
     print result
