@@ -6,6 +6,7 @@ import itertools
 import sys
 import re
 from titlecase import titlecase
+import glob
 
 from timeit import default_timer as timer
 
@@ -27,6 +28,9 @@ def comparison_string(s):
     re.sub('[^0-9a-zA-Z]+', '', s)
     return s
 
+def includes_any_from_list(string, items_to_check):
+    return any(comparison_string(item) in comparison_string(string) for item in items_to_check)
+
 class HeadlineSourcePhrase:
     def __init__(self, phrase, source_id):
         self.phrase = phrase.strip()
@@ -46,6 +50,8 @@ class HeadlineFragment:
         return self.comparison_string == other.comparison_string
     def __hash__(self):
         return self.comparison_string.__hash__()
+    def __str__(self):
+        return self.fragment
 
 class HeadlineResultPhrase:
     def __init__(self):
@@ -126,7 +132,8 @@ class HeadlineGenerator:
 
     def generate(self, sources, depth, seed_word, count = 10):
 
-        self.build_map_from_sources(sources, depth, False)
+        self.import_source_phrases(sources, False)
+        self.build_map(depth)
 
         start = timer()
 
@@ -144,7 +151,11 @@ class HeadlineGenerator:
 
     # Try to reconstruct a phrase to get the hot metadata
     def reconstruct(self, phrase, sources):
-        self.build_map_from_sources(sources, 2, True)
+
+        if not hasattr(self, 'markov_map'):
+            print "Building map..."
+            self.import_source_phrases(sources, True, phrase.split(" "))
+            self.build_map(2)
 
         sentence = HeadlineResultPhrase()
 
@@ -161,63 +172,70 @@ class HeadlineGenerator:
                 doubled_phrase.append(split_phrase[i])
                 i += 1
 
-        print(doubled_phrase)
-
         i = 0
         while i < len(doubled_phrase):
             word = doubled_phrase[i]
-            print("searching [1]: " + word)
             # Get the version of this word (with source) that's already in the map
             this_word = map_keys[map_keys.index(HeadlineFragment(None, word))]
             sentence.append(this_word)
-            print("appending [1]: " + this_word.fragment)
             i += 1
 
             # See if we can find out what the next following word would be
             if i < len(doubled_phrase):
-                print("searching [2]: " + doubled_phrase[i])
                 following_words = self.markov_map[this_word]
                 following_words_keys = following_words.keys()
                 second_search_fragment = HeadlineFragment(None, doubled_phrase[i])
                 if second_search_fragment in following_words:
                     second_word = following_words_keys[following_words_keys.index(second_search_fragment)]
                     sentence.append(second_word)
-                    print("appending [2]: " + second_word.fragment)
                     i += 1
 
         return sentence
 
-
-    def build_map_from_sources(self, sources, depth, include_all = False):
-        self.depth = depth
-
+    def import_source_phrases(self, sources, dont_window, must_include = []):
         start = timer()
+
+        if not sources:
+            # Use all sources
+            sources = [os.path.splitext(os.path.basename(f))[0] for f in glob.glob("vendor/headline-sources/db/*.txt")]
 
         # Import multiple dictionaries
         dir = os.path.dirname(__file__)
         imported_titles = []
         per_dictionary_limit = max_corpus_size / len(sources)
+        total = 0
+        imported = 0
         for source_id in sources:
             filename = os.path.join(dir, "vendor/headline-sources/db/" + source_id + ".txt")
 
             archive = open(filename)
             dict_titles = archive.read().split("\n")
             archive.close()
+            total += len(dict_titles)
 
-            if not include_all:
+            if not dont_window:
                 if len(dict_titles) > per_dictionary_limit:
                     window_start = randint(0,len(dict_titles) - per_dictionary_limit)
                     dict_titles = dict_titles[window_start:window_start+per_dictionary_limit]
 
+            # if len(must_include) > 0:
+            #     dict_titles = [x for x in dict_titles if includes_any_from_list(x, must_include)]
+
             source_phrases = [HeadlineSourcePhrase(headline, source_id) for headline in dict_titles]
+            imported += len(source_phrases)
 
             imported_titles = imported_titles + source_phrases
 
         self.source_phrases = imported_titles
 
+        print("Imported " + str(imported) + " of " + str(total) + " headlines.")
         print "-> import time " + str(timer() - start)
+
+
+    def build_map(self, depth):
         start = timer()
 
+        self.depth = depth
         self.markov_map = defaultdict(lambda:defaultdict(int))
 
         # Generate map in the form word1 -> word2 -> occurences of word2 after word1
