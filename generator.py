@@ -124,8 +124,71 @@ class HeadlineResultPhrase:
 
 class HeadlineGenerator:
 
-    def generate(self, sources, depth, seed_word):
+    def generate(self, sources, depth, seed_word, count = 10):
 
+        self.build_map_from_sources(sources, depth, False)
+
+        start = timer()
+
+        if HeadlineFragment(None, seed_word) not in self.markov_map.keys():
+            print('Seed word ' + seed_word + " not in dictionaries")
+            return []
+
+        results = []
+        for _ in itertools.repeat(None, count):
+            results.append(self.get_sentence(seed_word))
+
+        print "-> sample time " + str(timer() - start)
+
+        return f7_uniq(results)
+
+    # Try to reconstruct a phrase to get the hot metadata
+    def reconstruct(self, phrase, sources):
+        self.build_map_from_sources(sources, 2, True)
+
+        sentence = HeadlineResultPhrase()
+
+        map_keys = self.markov_map.keys()
+        split_phrase = phrase.split(" ")
+
+        doubled_phrase = []
+        i = 0
+        while i < len(split_phrase):
+            if i + 1 < len(split_phrase):
+                doubled_phrase.append(split_phrase[i] + " " + split_phrase[i+1])
+                i += 2
+            else:
+                doubled_phrase.append(split_phrase[i])
+                i += 1
+
+        print(doubled_phrase)
+
+        i = 0
+        while i < len(doubled_phrase):
+            word = doubled_phrase[i]
+            print("searching [1]: " + word)
+            # Get the version of this word (with source) that's already in the map
+            this_word = map_keys[map_keys.index(HeadlineFragment(None, word))]
+            sentence.append(this_word)
+            print("appending [1]: " + this_word.fragment)
+            i += 1
+
+            # See if we can find out what the next following word would be
+            if i < len(doubled_phrase):
+                print("searching [2]: " + doubled_phrase[i])
+                following_words = self.markov_map[this_word]
+                following_words_keys = following_words.keys()
+                second_search_fragment = HeadlineFragment(None, doubled_phrase[i])
+                if second_search_fragment in following_words:
+                    second_word = following_words_keys[following_words_keys.index(second_search_fragment)]
+                    sentence.append(second_word)
+                    print("appending [2]: " + second_word.fragment)
+                    i += 1
+
+        return sentence
+
+
+    def build_map_from_sources(self, sources, depth, include_all = False):
         self.depth = depth
 
         start = timer()
@@ -141,9 +204,10 @@ class HeadlineGenerator:
             dict_titles = archive.read().split("\n")
             archive.close()
 
-            if len(dict_titles) > per_dictionary_limit:
-                window_start = randint(0,len(dict_titles) - per_dictionary_limit)
-                dict_titles = dict_titles[window_start:window_start+per_dictionary_limit]
+            if not include_all:
+                if len(dict_titles) > per_dictionary_limit:
+                    window_start = randint(0,len(dict_titles) - per_dictionary_limit)
+                    dict_titles = dict_titles[window_start:window_start+per_dictionary_limit]
 
             source_phrases = [HeadlineSourcePhrase(headline, source_id) for headline in dict_titles]
 
@@ -173,18 +237,6 @@ class HeadlineGenerator:
 
 
         print "-> map time " + str(timer() - start)
-        start = timer()
-
-        if HeadlineFragment(None, seed_word) not in self.markov_map.keys():
-            print('Seed word ' + seed_word + " not in dictionaries")
-            return []
-
-        results = []
-        for _ in itertools.repeat(None, 10):
-            results.append(self.get_sentence(seed_word))
-
-        print "-> sample time " + str(timer() - start)
-        return f7_uniq(results)
 
     # Typical sampling from a categorical distribution
     def sample(self, items):
