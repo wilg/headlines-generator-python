@@ -13,6 +13,30 @@ from timeit import default_timer as timer
 # Settings
 max_corpus_size = int(os.getenv('MAX_CORPUS_SIZE', 20000))
 
+CHUNK_SIZE = 1000
+
+def pick_next_random_line(file, offset):
+    file.seek(offset)
+    chunk = file.read(CHUNK_SIZE)
+    lines = chunk.split(os.linesep)
+    # Make some provision in case yiou had not read at least one full line here
+    line_offset = offset + len(os.linesep) + chunk.find(os.linesep)
+    return line_offset, lines[1]
+
+def get_n_random_lines(path, n=5):
+    lenght = os.stat(path).st_size
+    results = []
+    result_offsets = set()
+    with open(path) as input:
+        for x in range(n):
+            while True:
+                offset, line = pick_next_random_line(input, randint(0, lenght - CHUNK_SIZE))
+                if not offset in result_offsets:
+                    result_offsets.add(offset)
+                    results.append(line)
+                    break
+    return results
+
 def f7_uniq(seq):
     seen = set()
     seen_add = seen.add
@@ -209,14 +233,13 @@ class HeadlineGenerator:
             filename = os.path.join(dir, "vendor/headline-sources/db/" + source_id + ".txt")
 
             archive = open(filename)
-            dict_titles = archive.read().split("\n")
+            dict_titles = archive.readlines()
             archive.close()
             total += len(dict_titles)
 
             if not dont_window:
                 if len(dict_titles) > per_dictionary_limit:
-                    window_start = randint(0,len(dict_titles) - per_dictionary_limit)
-                    dict_titles = dict_titles[window_start:window_start+per_dictionary_limit]
+                    dict_titles = get_n_random_lines(filename, per_dictionary_limit)
 
             # if len(must_include) > 0:
             #     dict_titles = [x for x in dict_titles if includes_any_from_list(x, must_include)]
