@@ -8,7 +8,6 @@ venv
 *.so
 
 # Distribution / packaging
-bin/
 build/
 develop-eggs/
 dist/
