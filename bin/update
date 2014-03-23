@@ -2,6 +2,6 @@
 
 cd "${BASH_SOURCE%/*}/../" || exit
 bin/pull  &&
-git commit -m 'auto-update'  &&
+git commit -am 'auto-update'  &&
 git push origin master  &&
 git push heroku master
