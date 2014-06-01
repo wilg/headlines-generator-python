@@ -1,3 +1,4 @@
+import source
 from collections import defaultdict
 from random import randint
 from random import random
@@ -48,7 +49,7 @@ def frag_or_none(fragment):
     return ''
 
 def comparison_string(s):
-    s = str(s).strip().lower().replace("\"", "")
+    s = unicode(s).strip().lower().replace("\"", "")
     re.sub('[^0-9a-zA-Z]+', '', s)
     return s
 
@@ -56,9 +57,9 @@ def includes_any_from_list(string, items_to_check):
     return any(comparison_string(item) in comparison_string(string) for item in items_to_check)
 
 class HeadlineSourcePhrase:
-    def __init__(self, phrase, source_id):
+    def __init__(self, phrase, source_headline):
         self.phrase = phrase.strip()
-        self.source_id = source_id
+        self.source_headline = source_headline
         self.comparison_string = comparison_string(self.phrase)
     def __eq__(self, other):
         return self.comparison_string == other.comparison_string
@@ -74,7 +75,7 @@ class HeadlineFragment:
         return self.comparison_string == other.comparison_string
     def __hash__(self):
         return self.comparison_string.__hash__()
-    def __str__(self):
+    def __unicode__(self):
         return self.fragment
 
 class HeadlineResultPhrase:
@@ -138,7 +139,7 @@ class HeadlineResultPhrase:
 
         char_index = 0
         for frag in self.reduced_fragments():
-            hsh = {'index': char_index, 'fragment': titlecase(frag.fragment), 'source_id':frag.source_phrase.source_id, 'source_phrase':frag.source_phrase.phrase}
+            hsh = {'index': char_index, 'fragment': titlecase(frag.fragment), 'source_id':frag.source_phrase.source_headline.source_id,  'source_headline_id':frag.source_phrase.source_headline.id, 'source_phrase':frag.source_phrase.phrase}
             fragments.append(hsh)
             char_index += len(frag.fragment)
 
@@ -149,14 +150,14 @@ class HeadlineResultPhrase:
     def __hash__(self):
         return comparison_string(self).__hash__()
 
-    def __str__(self):
+    def __unicode__(self):
         return titlecase(' '.join([fragment.fragment for fragment in self.fragments]).strip())
 
 class HeadlineGenerator:
 
     def generate(self, sources, depth, seed_word, count = 10):
 
-        self.import_source_phrases(sources, False)
+        self.import_source_phrases_db(sources)
         self.build_map(depth)
 
         start = timer()
@@ -215,6 +216,10 @@ class HeadlineGenerator:
                     i += 1
 
         return sentence
+
+    def import_source_phrases_db(self, sources):
+        query = source.SourceHeadline.random(sources, max_corpus_size)
+        self.source_phrases = [HeadlineSourcePhrase(source_headline.name, source_headline) for source_headline in query]
 
     def import_source_phrases(self, sources, dont_window, must_include = []):
         start = timer()

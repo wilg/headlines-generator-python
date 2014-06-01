@@ -35,6 +35,6 @@ def generate():
       else:
         headlines = gen.generate(sources, depth, seed_word)
 
-      results = [{'headline':str(headline), 'sources': headline.fragment_hashes(), 'hash': hashlib.sha1(str(headline) + "-" + salt).hexdigest()} for headline in headlines]
+      results = [{'headline':unicode(headline), 'sources': headline.fragment_hashes(), 'hash': hashlib.sha1(unicode(headline) + "-" + salt).hexdigest()} for headline in headlines]
 
     return jsonify(headlines=results)
