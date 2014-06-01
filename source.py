@@ -1,6 +1,13 @@
 from peewee import *
 import os
 import pw_database_url
+import logging
+import operator
+from timeit import default_timer as timer
+
+logger = logging.getLogger('peewee')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler())
 
 if os.environ.get('DATABASE_URL', None):
   config = pw_database_url.config()
@@ -16,6 +23,7 @@ else:
 
 db = PostgresqlDatabase(config['name'], host=config['host'], port=config['port'], password=config['password'], user=config['user'])
 db.get_conn().set_client_encoding('UTF8')
+db.connect()
 
 class SourceHeadline(Model):
   id = IntegerField()
@@ -31,4 +39,9 @@ class SourceHeadline(Model):
 
   @classmethod
   def random(klass, sources, amount):
-    return SourceHeadline.select().where(SourceHeadline.source_id << sources).order_by(fn.Random()).limit(amount)
+    start = timer()
+    clauses = [SourceHeadline.source_id == source for source in sources]
+    items = SourceHeadline.select().where(reduce(operator.or_, clauses)).order_by(fn.Random()).limit(amount)
+    items.execute()
+    logger.info("-> query time for " + str(amount) + " headlines " + str(timer() - start))
+    return items

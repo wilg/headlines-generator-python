@@ -11,6 +11,11 @@ import glob
 
 from timeit import default_timer as timer
 
+import logging
+logger = logging.getLogger('generator')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler())
+
 # Settings
 max_corpus_size = int(os.getenv('MAX_CORPUS_SIZE', 20000))
 
@@ -95,7 +100,7 @@ class HeadlineResultPhrase:
 
     def reduced_fragments(self):
         fragments = self.fragments
-        this_str = str(self)
+        this_str = unicode(self)
 
         # Combine fragments from the same source
         last_source_phrase = None
@@ -163,14 +168,14 @@ class HeadlineGenerator:
         start = timer()
 
         if HeadlineFragment(None, seed_word) not in self.markov_map.keys():
-            print('Seed word ' + seed_word + " not in dictionaries")
+            logger.info('Seed word ' + seed_word + " not in dictionaries")
             return []
 
         results = []
         for _ in itertools.repeat(None, count):
             results.append(self.get_sentence(seed_word))
 
-        print "-> sample time " + str(timer() - start)
+        logger.info("-> sample time " + str(timer() - start))
 
         return f7_uniq(results)
 
@@ -178,7 +183,7 @@ class HeadlineGenerator:
     def reconstruct(self, phrase, sources):
 
         if not hasattr(self, 'markov_map'):
-            print "Building map..."
+            logger.info("Building map...")
             self.import_source_phrases(sources, True, phrase.split(" "))
             self.build_map(2)
 
@@ -218,8 +223,10 @@ class HeadlineGenerator:
         return sentence
 
     def import_source_phrases_db(self, sources):
+        start = timer()
         query = source.SourceHeadline.random(sources, max_corpus_size)
         self.source_phrases = [HeadlineSourcePhrase(source_headline.name, source_headline) for source_headline in query]
+        logger.info("-> import time " + str(timer() - start))
 
     def import_source_phrases(self, sources, dont_window, must_include = []):
         start = timer()
@@ -256,8 +263,8 @@ class HeadlineGenerator:
 
         self.source_phrases = imported_titles
 
-        print("Imported " + str(imported) + " of " + str(total) + " headlines.")
-        print "-> import time " + str(timer() - start)
+        logger.info("Imported " + str(imported) + " of " + str(total) + " headlines.")
+        logger.info("-> import time " + str(timer() - start))
 
 
     def build_map(self, depth):
@@ -282,7 +289,7 @@ class HeadlineGenerator:
                 following[key] /= total
 
 
-        print "-> map time " + str(timer() - start)
+        logger.info("-> map time " + str(timer() - start))
 
     # Typical sampling from a categorical distribution
     def sample(self, items):
@@ -306,9 +313,10 @@ class HeadlineGenerator:
                 tmp_frag_list = [frag_or_none(frag) for frag in sentence.fragments[-self.depth:]]
                 tmp_item = HeadlineFragment(None, ' '.join(tmp_frag_list))
                 next_word = self.sample(self.markov_map[tmp_item].items())
-            str_sentence = comparison_string(str(sentence))
+            str_sentence = comparison_string(unicode(sentence))
             if any(str_sentence in phrase.comparison_string for phrase in self.source_phrases):
                 continue # Prune titles that are substrings of actual titles
+            # logger.info("length " + str(str_sentence))
             if len(str_sentence) > length_max:
                 continue
             return sentence
