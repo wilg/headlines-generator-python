@@ -40,8 +40,18 @@ class SourceHeadline(Model):
   @classmethod
   def random(klass, sources, amount):
     start = timer()
-    clauses = [SourceHeadline.source_id == source for source in sources]
-    items = SourceHeadline.select().where(reduce(operator.or_, clauses)).order_by(fn.Random()).limit(amount)
-    items.execute()
+
+    items = []
+    if os.environ.get('PULL_SOURCES_RANDOMLY', False):
+      clauses = [SourceHeadline.source_id == source for source in sources]
+      items = SourceHeadline.select().where(reduce(operator.or_, clauses)).order_by(fn.Random()).limit(amount)
+      items.execute()
+    else:
+      for source in sources:
+        subset = SourceHeadline.select().where(SourceHeadline.source_id == source).order_by(fn.Random()).limit(amount / len(sources))
+        subset.execute()
+        items += [item for item in subset]
+
     logger.info("-> query time for " + str(amount) + " headlines " + str(timer() - start))
     return items
+
