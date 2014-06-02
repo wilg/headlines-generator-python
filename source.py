@@ -1,3 +1,6 @@
+from psycopg2ct import compat
+compat.register()
+
 from peewee import *
 import os
 import pw_database_url

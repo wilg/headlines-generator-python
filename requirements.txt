@@ -2,9 +2,11 @@ Flask==0.10.1
 Jinja2==2.7.1
 MarkupSafe==0.18
 Werkzeug==0.9.4
+cffi==0.8.2
 gunicorn==18.0
 itsdangerous==0.23
 peewee==2.2.4
-psycopg2==2.5.3
+psycopg2ct==2.4.4
 pw-database-url==0.2.0
+pycparser==2.10
 wsgiref==0.1.2
