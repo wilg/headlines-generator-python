@@ -1,3 +1,6 @@
+import urllib3
+urllib3.disable_warnings()
+
 import os
 from flask import Flask
 from flask import jsonify
