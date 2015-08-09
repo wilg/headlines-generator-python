@@ -179,6 +179,25 @@ class HeadlineGenerator:
 
         return f7_uniq(results)
 
+    def generate_recent(self, age, depth, seed_word, count = 10):
+
+        self.import_source_phrases_db_recent(age)
+        self.build_map(depth)
+
+        start = timer()
+
+        if HeadlineFragment(None, seed_word) not in self.markov_map.keys():
+            logger.info('Seed word ' + seed_word + " not in dictionaries")
+            return []
+
+        results = []
+        for _ in itertools.repeat(None, count):
+            results.append(self.get_sentence(seed_word))
+
+        logger.info("-> sample time " + str(timer() - start))
+
+        return f7_uniq(results)
+
     # Try to reconstruct a phrase to get the hot metadata
     def reconstruct(self, phrase, sources):
 
@@ -225,6 +244,12 @@ class HeadlineGenerator:
     def import_source_phrases_db(self, sources):
         start = timer()
         query = source.SourceHeadline.random(sources, max_corpus_size)
+        self.source_phrases = [HeadlineSourcePhrase(source_headline.name, source_headline) for source_headline in query]
+        logger.info("-> import time " + str(timer() - start))
+
+    def import_source_phrases_db_recent(self, age):
+        start = timer()
+        query = source.SourceHeadline.random_recent(age, max_corpus_size)
         self.source_phrases = [HeadlineSourcePhrase(source_headline.name, source_headline) for source_headline in query]
         logger.info("-> import time " + str(timer() - start))
 

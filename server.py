@@ -23,14 +23,17 @@ def generate():
     sources = request.args.get('sources', '')
     seed_word = request.args.get('seed_word', '')
     reconstruct = request.args.get('reconstruct', False)
+    age = request.args.get('age', None)
     depth = int(request.args.get('depth', 2))
 
     results = []
-    if sources:
+    if sources or age:
       sources = sources.split(",")
       headlines = []
 
-      if reconstruct:
+      if age:
+        headlines = gen.generate_recent(int(age), depth, seed_word)
+      elif reconstruct:
         headlines = [gen.reconstruct(reconstruct, sources)]
       else:
         headlines = gen.generate(sources, depth, seed_word)

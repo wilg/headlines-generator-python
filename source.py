@@ -8,6 +8,8 @@ import logging
 import operator
 from timeit import default_timer as timer
 
+from datetime import datetime, timedelta
+
 logger = logging.getLogger('peewee')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
@@ -51,10 +53,17 @@ class SourceHeadline(Model):
       items.execute()
     else:
       for source in sources:
-        subset = SourceHeadline.select().where(SourceHeadline.source_id == source).order_by(fn.Random()).limit(amount / len(sources))
+        subset = SourceHeadline.select(SourceHeadline.id, SourceHeadline.name, SourceHeadline.source_id).where(SourceHeadline.source_id == source).order_by(fn.Random()).limit(amount / len(sources))
         subset.execute()
         items += [item for item in subset]
 
     logger.info("-> query time for " + str(amount) + " headlines " + str(timer() - start))
     return items
 
+  @classmethod
+  def random_recent(klass, age, amount):
+    start = timer()
+    timestamp = datetime.now() - timedelta(days=age)
+    items = SourceHeadline.select(SourceHeadline.id, SourceHeadline.name, SourceHeadline.source_id).where(SourceHeadline.created_at >= timestamp).order_by(fn.Random()).limit(amount)
+    logger.info("-> query time for " + str(amount) + " headlines " + str(timer() - start))
+    return items
