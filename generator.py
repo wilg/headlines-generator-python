@@ -245,13 +245,13 @@ class HeadlineGenerator:
         start = timer()
         query = source.SourceHeadline.random(sources, max_corpus_size)
         self.source_phrases = [HeadlineSourcePhrase(source_headline.name, source_headline) for source_headline in query]
-        logger.info("-> import time " + str(timer() - start))
+        logger.info("-> import time " + str(timer() - start) + " for " + str(len(self.source_phrases)))
 
     def import_source_phrases_db_recent(self, age):
         start = timer()
         query = source.SourceHeadline.random_recent(age, max_corpus_size)
         self.source_phrases = [HeadlineSourcePhrase(source_headline.name, source_headline) for source_headline in query]
-        logger.info("-> import time " + str(timer() - start))
+        logger.info("-> import time " + str(timer() - start) + " for " + str(len(self.source_phrases)))
 
     def import_source_phrases(self, sources, dont_window, must_include = []):
         start = timer()

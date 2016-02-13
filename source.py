@@ -65,5 +65,6 @@ class SourceHeadline(Model):
     start = timer()
     timestamp = datetime.now() - timedelta(days=age)
     items = SourceHeadline.select(SourceHeadline.id, SourceHeadline.name, SourceHeadline.source_id).where(SourceHeadline.created_at >= timestamp).order_by(fn.Random()).limit(amount)
+    items.execute()
     logger.info("-> query time for " + str(amount) + " headlines " + str(timer() - start))
     return items
