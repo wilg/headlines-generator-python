@@ -28,6 +28,10 @@ def generate():
     reconstruct = request.args.get('reconstruct', False)
     age = request.args.get('age', None)
     depth = int(request.args.get('depth', 2))
+    count = int(request.args.get('count', 10))
+
+    if count > 100:
+      count = 100
 
     results = []
     if sources or age:
@@ -35,11 +39,11 @@ def generate():
       headlines = []
 
       if age:
-        headlines = gen.generate_recent(int(age), depth, seed_word)
+        headlines = gen.generate_recent(int(age), depth, seed_word, count)
       elif reconstruct:
         headlines = [gen.reconstruct(reconstruct, sources)]
       else:
-        headlines = gen.generate(sources, depth, seed_word)
+        headlines = gen.generate(sources, depth, seed_word, count)
 
       results = [{
           'headline':unicode(headline),
