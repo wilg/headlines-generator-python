@@ -160,7 +160,7 @@ class HeadlineResultPhrase:
 
 class HeadlineGenerator:
 
-    def generate(self, sources, depth, seed_word, count = 10):
+    def generate(self, sources, depth, seed_word, count = 10, length_max=140):
 
         self.import_source_phrases_db(sources)
         self.build_map(depth)
@@ -173,13 +173,13 @@ class HeadlineGenerator:
 
         results = []
         for _ in itertools.repeat(None, count):
-            results.append(self.get_sentence(seed_word))
+            results.append(self.get_sentence(seed_word, length_max))
 
         logger.info("-> sample time " + str(timer() - start))
 
         return f7_uniq(results)
 
-    def generate_recent(self, age, depth, seed_word, count = 10):
+    def generate_recent(self, age, depth, seed_word, count = 10, length_max=140):
 
         self.import_source_phrases_db_recent(age)
         self.build_map(depth)
@@ -192,7 +192,7 @@ class HeadlineGenerator:
 
         results = []
         for _ in itertools.repeat(None, count):
-            results.append(self.get_sentence(seed_word))
+            results.append(self.get_sentence(seed_word, length_max))
 
         logger.info("-> sample time " + str(timer() - start))
 
@@ -326,7 +326,7 @@ class HeadlineGenerator:
                 next_word = k
         return next_word
 
-    def get_sentence(self, seed_word, length_max=140):
+    def get_sentence(self, seed_word, length_max):
         while True:
             sentence = HeadlineResultPhrase()
             next_word = self.sample(self.markov_map[HeadlineFragment(None, seed_word)].items())
