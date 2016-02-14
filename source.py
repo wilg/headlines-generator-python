@@ -1,4 +1,4 @@
-from psycopg2ct import compat
+from psycopg2cffi import compat
 compat.register()
 
 from peewee import *

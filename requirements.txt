@@ -6,7 +6,7 @@ Jinja2==2.7.1
 MarkupSafe==0.18
 peewee==2.6.3
 psycopg2==2.6.1
-psycopg2ct==2.4.4
+psycopg2cffi==2.7.2
 pw-database-url==0.2.0
 pycparser==2.14
 urllib3==1.11
