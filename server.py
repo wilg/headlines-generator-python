@@ -44,6 +44,7 @@ def generate():
     results = []
     if sources or age:
       sources = sources.split(",")
+      sources = list(filter(None, sources))
       headlines = []
 
       if age:
