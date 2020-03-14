@@ -72,7 +72,7 @@ class SourceHeadline(Model):
       .order_by(fn.Random()) \
       .limit(amount)
 
-    if not (sources is None):
+    if not (sources is None) and len(sources) > 0:
       items = items.where(SourceHeadline.source_id.in_(sources))
 
     items.execute()
