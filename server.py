@@ -25,18 +25,24 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def generate():
+
+    params = None
+    if request.method == 'POST':
+      params = request.form
+    else:
+      params = request.args
 
     logger.info("received request " + request.url)
 
-    sources = request.args.get('sources', '')
-    seed_word = request.args.get('seed_word', '')
-    reconstruct = request.args.get('reconstruct', False)
-    age = request.args.get('age', None)
-    depth = int(request.args.get('depth', 2))
-    count = int(request.args.get('count', 10))
-    length_max = int(request.args.get('length_max', 140))
+    sources = params.get('sources', '')
+    seed_word = params.get('seed_word', '')
+    reconstruct = params.get('reconstruct', False)
+    age = params.get('age', None)
+    depth = int(params.get('depth', 2))
+    count = int(params.get('count', 10))
+    length_max = int(params.get('length_max', 140))
 
     if count > 100:
       count = 100
