@@ -47,7 +47,7 @@ def generate():
       headlines = []
 
       if age:
-        headlines = gen.generate_recent(int(age), depth, seed_word, count, length_max)
+        headlines = gen.generate_recent(int(age), sources, depth, seed_word, count, length_max)
       elif reconstruct:
         headlines = [gen.reconstruct(reconstruct, sources)]
       else:

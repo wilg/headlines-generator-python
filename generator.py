@@ -179,9 +179,9 @@ class HeadlineGenerator:
 
         return f7_uniq(results)
 
-    def generate_recent(self, age, depth, seed_word, count = 10, length_max=140):
+    def generate_recent(self, age, sources, depth, seed_word, count = 10, length_max=140):
 
-        self.import_source_phrases_db_recent(age)
+        self.import_source_phrases_db_recent(age, sources)
         self.build_map(depth)
 
         start = timer()
@@ -247,9 +247,9 @@ class HeadlineGenerator:
         self.source_phrases = [HeadlineSourcePhrase(source_headline.name, source_headline) for source_headline in query]
         logger.info("-> import time " + str(timer() - start) + " for " + str(len(self.source_phrases)))
 
-    def import_source_phrases_db_recent(self, age):
+    def import_source_phrases_db_recent(self, age, sources):
         start = timer()
-        query = source.SourceHeadline.random_recent(age, max_corpus_size)
+        query = source.SourceHeadline.random_recent(age, max_corpus_size, sources)
         self.source_phrases = [HeadlineSourcePhrase(source_headline.name, source_headline) for source_headline in query]
         logger.info("-> import time " + str(timer() - start) + " for " + str(len(self.source_phrases)))
 

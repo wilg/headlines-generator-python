@@ -61,10 +61,20 @@ class SourceHeadline(Model):
     return items
 
   @classmethod
-  def random_recent(klass, age, amount):
+  def random_recent(klass, age, amount, sources):
     start = timer()
+
     timestamp = datetime.now() - timedelta(days=age)
-    items = SourceHeadline.select(SourceHeadline.id, SourceHeadline.name, SourceHeadline.source_id).where(SourceHeadline.created_at >= timestamp).order_by(fn.Random()).limit(amount)
+
+    items = SourceHeadline
+      .select(SourceHeadline.id, SourceHeadline.name, SourceHeadline.source_id)
+      .where(SourceHeadline.created_at >= timestamp)
+      .order_by(fn.Random())
+      .limit(amount)
+
+    if not (sources is None):
+      items = items.where(SourceHeadline.source_id.in_(sources))
+
     items.execute()
     logger.info("-> query time for " + str(amount) + " headlines " + str(timer() - start))
     return items
