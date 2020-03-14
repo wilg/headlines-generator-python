@@ -66,10 +66,10 @@ class SourceHeadline(Model):
 
     timestamp = datetime.now() - timedelta(days=age)
 
-    items = SourceHeadline
-      .select(SourceHeadline.id, SourceHeadline.name, SourceHeadline.source_id)
-      .where(SourceHeadline.created_at >= timestamp)
-      .order_by(fn.Random())
+    items = SourceHeadline \
+      .select(SourceHeadline.id, SourceHeadline.name, SourceHeadline.source_id) \
+      .where(SourceHeadline.created_at >= timestamp) \
+      .order_by(fn.Random()) \
       .limit(amount)
 
     if not (sources is None):
