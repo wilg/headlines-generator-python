@@ -73,6 +73,8 @@ class SourceHeadline(Model):
       .limit(amount)
 
     if sources is not None and len(sources) > 0:
+      print(sources)
+      print(len(sources))
       items = items.where(SourceHeadline.source_id.in_(sources))
 
     items.execute()
